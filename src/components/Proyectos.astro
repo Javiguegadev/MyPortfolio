@@ -1,6 +1,7 @@
 ---
 import Code from "../icons/Code.astro";
 import Card from "./Card.astro";
+import Lightbox from "./Lightbox.astro";
 
 import { getI18N } from "../i18n/index";
 
@@ -11,11 +12,28 @@ const PROJECTS = [
   {
     title: i18n.MY_PROJECTS_TITLE_1,
     description: i18n.MY_PROJECTS_DESCRIPTION_1,
-    technologies: ["Astro", "React", "Svelte", "Tailwind"],
-    image: "/imgs/spotify-clone-card.webp",
-    imageAlt: i18n.MY_PROJECTS_IMAGE_ALT_1,
-    imageWidth: 800,
-    imageHeight: 384,
+    technologies: ["Astro", "React", "Svelte", "Tailwind CSS", "Zustand"],
+    highlights: [
+      i18n.MY_PROJECTS_HIGHLIGHT_1_1,
+      i18n.MY_PROJECTS_HIGHLIGHT_1_2,
+      i18n.MY_PROJECTS_HIGHLIGHT_1_3,
+    ],
+    images: [
+      {
+        src: "/imgs/spotify-clone-playlist.webp",
+        full: "/imgs/spotify-clone-playlist-hd.webp",
+        alt: i18n.MY_PROJECTS_IMAGE_ALT_1,
+        width: 1200,
+        height: 717,
+      },
+      {
+        src: "/imgs/spotify-clone-home.webp",
+        full: "/imgs/spotify-clone-home-hd.webp",
+        alt: i18n.MY_PROJECTS_IMAGE_ALT_1_2,
+        width: 1200,
+        height: 717,
+      },
+    ],
     gitHubUrl: "https://github.com/Javiguegadev/spotify-clone",
   },
 ];
@@ -26,6 +44,7 @@ const PROJECTS = [
   <div class="list">
     {PROJECTS.map((project) => <Card {...project} />)}
   </div>
+  <Lightbox />
 </section>
 
 <style>

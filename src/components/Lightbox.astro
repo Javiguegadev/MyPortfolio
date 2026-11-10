@@ -1,0 +1,262 @@
+---
+/**
+ * Lightbox for project screenshots.
+ * Any link with `data-lightbox="<group>"` opens its `href` here; links that share a
+ * group can be browsed with the arrows (buttons or ← →). Without JS the link
+ * still opens the image in a new tab.
+ */
+import { getI18N } from "../i18n/index";
+
+const { currentLocale } = Astro;
+const i18n = getI18N({ currentLocale });
+---
+
+<dialog id="lightbox" class="lightbox" aria-label={i18n.LIGHTBOX_LABEL}>
+  <button class="lb-button lb-close" type="button" data-lb-close aria-label={i18n.LIGHTBOX_CLOSE}>
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      ></path>
+    </svg>
+  </button>
+
+  <button class="lb-button lb-nav lb-prev" type="button" data-lb-prev aria-label={i18n.LIGHTBOX_PREV}>
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path
+        d="M15 5l-7 7 7 7"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+    </svg>
+  </button>
+
+  <figure class="lb-figure">
+    <img class="lb-img" src="" alt="" />
+    <figcaption class="lb-caption"></figcaption>
+  </figure>
+
+  <button class="lb-button lb-nav lb-next" type="button" data-lb-next aria-label={i18n.LIGHTBOX_NEXT}>
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+      <path
+        d="M9 5l7 7-7 7"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"></path>
+    </svg>
+  </button>
+</dialog>
+
+<style>
+  .lightbox {
+    width: 80vw;
+    height: 80vh;
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    overflow: visible;
+    color: #fff;
+  }
+  .lightbox::backdrop {
+    background: rgb(0 0 0 / 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  .lb-figure {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+  .lb-img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100% - 2.5rem);
+    object-fit: contain;
+    border-radius: 10px;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 0.5);
+    cursor: zoom-out;
+    transition: filter 0.3s ease;
+  }
+  /* Thumbnail on screen while the HD version downloads. */
+  .lb-img.is-loading {
+    filter: blur(2px);
+  }
+  .lb-caption {
+    font-size: 0.9375rem;
+    text-align: center;
+    color: rgb(255 255 255 / 0.85);
+  }
+  .lb-button {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    border-radius: 50%;
+    background: rgb(0 0 0 / 0.45);
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .lb-button:hover {
+    background: rgb(0 0 0 / 0.7);
+  }
+  .lb-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .lb-close {
+    top: -3.25rem;
+    right: 0;
+  }
+  .lb-nav {
+    top: 50%;
+    translate: 0 -50%;
+  }
+  .lb-prev {
+    left: -3.5rem;
+  }
+  .lb-next {
+    right: -3.5rem;
+  }
+  .lb-nav[hidden] {
+    display: none;
+  }
+
+  /* Small screens: use more width and keep the controls inside the viewport. */
+  @media (max-width: 760px) {
+    .lightbox {
+      width: 94vw;
+      height: 70vh;
+    }
+    .lb-prev {
+      left: 0.5rem;
+    }
+    .lb-next {
+      right: 0.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .lightbox[open],
+    .lightbox[open]::backdrop {
+      animation: lb-fade 0.2s ease-out;
+    }
+    .lightbox[open] .lb-figure {
+      animation: lb-zoom 0.25s ease-out;
+    }
+  }
+  @keyframes lb-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes lb-zoom {
+    from {
+      transform: scale(0.96);
+    }
+  }
+
+  :global(html:has(.lightbox[open])) {
+    overflow: hidden;
+  }
+</style>
+
+<script>
+  // Event delegation on document: survives ClientRouter page swaps (e.g. language switch).
+  let group: HTMLAnchorElement[] = [];
+  let index = 0;
+  const loaded = new Set<string>();
+
+  const getDialog = () => document.getElementById("lightbox") as HTMLDialogElement | null;
+
+  function show(i: number) {
+    const dialog = getDialog();
+    const link = group[i];
+    if (!dialog || !link) return;
+    index = i;
+    const img = dialog.querySelector<HTMLImageElement>(".lb-img")!;
+    const alt = link.dataset.lightboxAlt ?? "";
+    const full = link.href;
+    const thumb = link.dataset.lightboxThumb;
+    img.alt = alt;
+
+    // Show the (already cached) thumbnail at once, then swap in the high-res
+    // version as soon as it has downloaded. HD files are only fetched here.
+    if (thumb && !loaded.has(full)) {
+      img.src = thumb;
+      img.classList.add("is-loading");
+      const hd = new Image();
+      hd.onload = () => {
+        loaded.add(full);
+        if (group[index] === link) {
+          img.src = full;
+          img.classList.remove("is-loading");
+        }
+      };
+      hd.src = full;
+    } else {
+      img.src = full;
+      img.classList.remove("is-loading");
+    }
+    dialog.querySelector(".lb-caption")!.textContent = alt;
+    const single = group.length < 2;
+    dialog.querySelector<HTMLElement>("[data-lb-prev]")!.hidden = single;
+    dialog.querySelector<HTMLElement>("[data-lb-next]")!.hidden = single;
+  }
+
+  function step(delta: number) {
+    if (group.length < 2) return;
+    show((index + delta + group.length) % group.length);
+  }
+
+  document.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement;
+
+    const link = target.closest<HTMLAnchorElement>("a[data-lightbox]");
+    if (link) {
+      // Let ctrl/cmd/shift/middle clicks open the image in a new tab as usual.
+      if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+      const dialog = getDialog();
+      if (!dialog) return;
+      event.preventDefault();
+      const name = link.dataset.lightbox;
+      group = [...document.querySelectorAll<HTMLAnchorElement>("a[data-lightbox]")].filter(
+        (a) => a.dataset.lightbox === name,
+      );
+      dialog.showModal();
+      show(group.indexOf(link));
+      return;
+    }
+
+    const dialog = getDialog();
+    if (!dialog?.open) return;
+    if (target.closest("[data-lb-prev]")) return step(-1);
+    if (target.closest("[data-lb-next]")) return step(1);
+    // Close button, the image itself, or anywhere outside the image (blurred backdrop).
+    if (
+      target.closest("[data-lb-close]") ||
+      target.classList.contains("lb-img") ||
+      target === dialog ||
+      target.classList.contains("lb-figure")
+    ) {
+      dialog.close();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!getDialog()?.open) return;
+    if (event.key === "ArrowLeft") step(-1);
+    if (event.key === "ArrowRight") step(1);
+  });
+</script>
