@@ -165,7 +165,7 @@ El diseño se basa en un pequeño sistema de tokens definido como variables CSS 
 
 ```sh
 # 1. Clona el repositorio
-git clone https://github.com/javiergg13/MyPortfolio.git
+git clone https://github.com/Javiguegadev/MyPortfolio.git
 cd MyPortfolio
 
 # 2. Instala las dependencias
@@ -268,7 +268,7 @@ Configuración de build:
 
 - 🌐 Portafolio: [javierguerrero-pf.netlify.app](https://javierguerrero-pf.netlify.app)
 - 💼 LinkedIn: [javier-guerrero-gallo](https://www.linkedin.com/in/javier-guerrero-gallo-3989b9228/)
-- 🐙 GitHub: [@javiergg13](https://github.com/javiergg13)
+- 🐙 GitHub: [@Javiguegadev](https://github.com/Javiguegadev)
 
 ---
 
